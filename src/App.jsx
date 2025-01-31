@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import Search from "./components/Search";
-import Spinner from "./components/Spinner";
 import MovieCard from "./components/MovieCard";
 import { useDebounce } from "react-use";
 import { getTrendingMovies, updateSearchCount } from "./appwrite";
+import PaginationMovie from "./components/Pagination";
+import SkeletonMovie from "./components/Skeleton";
 
 const API_BASE_URL = "https://api.themoviedb.org/3";
 
@@ -25,6 +26,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [trendingMovies, setTrendingMovies] = useState([]);
+  const [page, setPage] = useState(1);
 
   useDebounce(() => setDebounceSearchTerm(searchTerm), 1000, [searchTerm]);
 
@@ -34,8 +36,10 @@ function App() {
 
     try {
       const endpoint = query
-        ? `${API_BASE_URL}/search/movie?query=${encodeURIComponent(query)}`
-        : `${API_BASE_URL}/discover/movie?sort_by=popularity.desc`;
+        ? `${API_BASE_URL}/search/movie?query=${encodeURIComponent(
+            query
+          )}&page=${page}`
+        : `${API_BASE_URL}/discover/movie?sort_by=popularity.desc&page=${page}&include_adult=false`;
       const response = await fetch(endpoint, API_OPTIONS);
 
       if (!response.ok) {
@@ -53,7 +57,7 @@ function App() {
         return;
       }
 
-      setMovieList(data.results || []);
+      setMovieList(data || []);
 
       if (query && data.results.length > 0) {
         updateSearchCount(query, data.results[0]);
@@ -78,7 +82,7 @@ function App() {
 
   useEffect(() => {
     fetchMovies(debounceSearchTerm);
-  }, [debounceSearchTerm]);
+  }, [debounceSearchTerm, page]);
 
   useEffect(() => {
     loadTrendingMovies();
@@ -115,18 +119,19 @@ function App() {
             <h2 className="mt-[40px]">All Movies</h2>
 
             {isLoading ? (
-              <Spinner />
+              <SkeletonMovie />
             ) : errorMessage ? (
               <p className="text-red-500">{errorMessage}</p>
             ) : (
               <ul>
-                {movieList.map((movie) => (
+                {movieList?.results?.map((movie) => (
                   <MovieCard movie={movie} key={movie.id} />
                 ))}
               </ul>
             )}
           </section>
         </div>
+        <PaginationMovie page={page} setPage={setPage} />
       </div>
     </main>
   );
